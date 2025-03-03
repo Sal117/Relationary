@@ -1,59 +1,64 @@
 import React, { useEffect, useState } from "react";
-import { getTherapists, getAvailableSlots, registerUser, getUserAppointments } from "../services/firebaseService";
+import { 
+  getTherapists, 
+  getAvailableSlots, 
+  registerUser, 
+  addTherapistToFirestore, 
+  getUserAppointments 
+} from "../services/firebaseService";
 import "../Styles/Admin.css"; 
 
 const Admin = () => {
-  // State to store therapist data
   const [therapists, setTherapists] = useState<any[]>([]);
-  // State to store available slots for selected therapist
   const [slots, setSlots] = useState<any[]>([]);
-  // State to store user appointment data
   const [users, setUsers] = useState<any[]>([]);
-  // State for adding a new therapist
+  
+  // State for new therapist details
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // Fetch therapist data when component mounts
+  const [name, setName] = useState("");
+  const [specialization, setSpecialization] = useState("");
+  const [availableDays, setAvailableDays] = useState<string[]>([]);
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  
   useEffect(() => {
     fetchTherapists();
   }, []);
 
-  /**
-   * Fetches the list of therapists from Firestore and updates state
-   */
   const fetchTherapists = async () => {
     const data = await getTherapists();
     setTherapists(data);
   };
 
-  /**
-   * Fetches available slots for a specific therapist
-   * @param therapistId - The ID of the selected therapist
-   */
   const fetchSlots = async (therapistId: string) => {
     const slotsData = await getAvailableSlots(therapistId);
     setSlots(slotsData);
   };
 
-  /**
-   * Fetches users and their appointments (to be replaced with actual user fetching logic)
-   */
   const fetchUsers = async () => {
-    const appointments = await getUserAppointments("dummyUserId"); // Replace with actual user fetching logic
+    const appointments = await getUserAppointments("dummyUserId");
     setUsers(appointments);
   };
 
-  /**
-   * Registers a new therapist using email and password
-   * Calls Firebase Authentication to create a user account
-   */
   const handleAddTherapist = async () => {
-    if (!email || !password) {
-      alert("Please enter email and password");
+    if (!email || !password || !name || !specialization || availableDays.length === 0 || availableTimes.length === 0) {
+      alert("Please fill all fields before adding a therapist.");
       return;
     }
+
     try {
-      await registerUser(email, password);
+      // Register therapist in Firebase Auth
+      const userCredential = await registerUser(email, password);
+      const therapistId = userCredential.uid;
+
+      // Store therapist details in Firestore
+      await addTherapistToFirestore(therapistId, { 
+        name, 
+        specialization, 
+        availableDays, 
+        availableTimes 
+      });
+
       alert("Therapist added successfully!");
       fetchTherapists(); // Refresh therapist list
     } catch (error) {
@@ -65,9 +70,23 @@ const Admin = () => {
     <div className="admin-container">
       <h2 className="admin-title">Admin Dashboard</h2>
 
-      {/* Section to add a new therapist */}
+      {/* Add New Therapist */}
       <div className="section">
         <h3>Add New Therapist</h3>
+        <input
+          type="text"
+          placeholder="Full Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="input-field"
+        />
+        <input
+          type="text"
+          placeholder="Specialization"
+          value={specialization}
+          onChange={(e) => setSpecialization(e.target.value)}
+          className="input-field"
+        />
         <input
           type="email"
           placeholder="Therapist Email"
@@ -82,18 +101,40 @@ const Admin = () => {
           onChange={(e) => setPassword(e.target.value)}
           className="input-field"
         />
+        
+        {/* Available Days Selection */}
+        <label>Available Days:</label>
+        <select onChange={(e) => setAvailableDays(Array.from(e.target.selectedOptions).map(o => o.value))}
+        className="input-field">
+          <option value="Monday">Monday</option>
+          <option value="Tuesday">Tuesday</option>
+          <option value="Wednesday">Wednesday</option>
+          <option value="Thursday">Thursday</option>
+          <option value="Friday">Friday</option>
+        </select>
+
+        {/* Available Time Slots */}
+        <label>Available Time Slots:</label>
+        <input
+          type="text"
+          placeholder="e.g., 10:00 AM, 2:00 PM"
+          value={availableTimes.join(", ")}
+          onChange={(e) => setAvailableTimes(e.target.value.split(", ").map(time => time.trim()))}
+          className="input-field"
+        />
+
         <button onClick={handleAddTherapist} className="button">
           Add Therapist
         </button>
       </div>
 
-      {/* Section to display the list of therapists */}
+      {/* Therapists List */}
       <div className="section">
         <h3>Therapists List</h3>
         <ul>
           {therapists.map((therapist) => (
             <li key={therapist.therapistId}>
-              {therapist.name} - {therapist.therapistId}
+              {therapist.name} - {therapist.specialization}
               <button onClick={() => fetchSlots(therapist.therapistId)} className="small-button">
                 Get Slots
               </button>
@@ -102,7 +143,7 @@ const Admin = () => {
         </ul>
       </div>
 
-      {/* Section to display available slots */}
+      {/* Available Slots */}
       <div className="section">
         <h3>Available Slots</h3>
         <ul>
@@ -114,7 +155,7 @@ const Admin = () => {
         </ul>
       </div>
 
-      {/* Section to display user appointment information */}
+      {/* User Information */}
       <div className="section">
         <h3>Users Information</h3>
         <button onClick={fetchUsers} className="button">Get Users</button>
