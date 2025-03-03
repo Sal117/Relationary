@@ -1,0 +1,67 @@
+.App {
+  text-align: center;
+}
+
+/* 🔹 Navbar Styles */
+.navbar {
+  background-color: #333;
+  padding: 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.logo {
+  height: 50px;
+}
+
+.nav-links {
+  list-style: none;
+  display: flex;
+  gap: 20px;
+}
+
+.nav-links li {
+  display: inline;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-size: 18px;
+  padding: 10px 15px;
+  border-radius: 5px;
+  transition: background 0.3s ease-in-out;
+}
+
+.nav-links a:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* 🔹 Active Link Highlight */
+.active-link {
+  background: #007bff;
+  border-radius: 5px;
+}
+
+/* 🔹 Page Content */
+.content {
+  padding: 40px;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+/* 🔹 Buttons */
+.nav-button {
+  background-color: #007bff;
+  color: white;
+  padding: 10px 20px;
+  border-radius: 5px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease-in-out;
+}
+
+.nav-button:hover {
+  background-color: #0056b3;
+}
