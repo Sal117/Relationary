@@ -1,0 +1,156 @@
+/*************************************************************
+ * App.tsx
+ * Main Application Component:
+ *  - Manages routes (Home/Auth, Booking, Admin)
+ *  - Observes auth state changes (onAuthStateChanged)
+ *  - Fetches user role from Firestore to enable admin features
+ *************************************************************/
+
+import React, { useEffect, useState } from "react";
+import { Routes, Route, NavLink, useNavigate } from "react-router-dom";
+import Booking from "./pages/Booking";
+import Admin from "./pages/Admin";
+import Auth from "./components/Auth";
+
+// Firebase imports
+import { auth } from "./services/firebaseConfig";
+import { onAuthStateChanged } from "firebase/auth";
+
+// Our new/updated service methods
+import { getUserProfile, logoutUser } from "./services/firebaseService";
+
+// Assets & Styles
+import logo from "./logo.svg";
+import "./App.css";
+
+function App() {
+  // State to store the authenticated user object (if any)
+  const [user, setUser] = useState<any>(null);
+
+  // State to check if the user is an admin
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Hook for programmatic navigation
+  const navigate = useNavigate();
+
+  /*************************************************************
+   *  EFFECT: Listen for changes in Auth state
+   *  Whenever the user logs in/out, onAuthStateChanged is triggered
+   *************************************************************/
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setUser(currentUser);
+
+      if (currentUser?.uid) {
+        // Once the user is logged in, fetch their profile from Firestore
+        await fetchUserRole(currentUser.uid);
+      } else {
+        // Reset admin status if user logs out
+        setIsAdmin(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  /**
+   * Fetch user role from Firestore "users" collection.
+   * If role == "admin", we set isAdmin to true; otherwise false.
+   */
+  const fetchUserRole = async (userId: string) => {
+    try {
+      const profile = await getUserProfile(userId);
+      if (profile && profile.role === "admin") {
+        setIsAdmin(true);
+      } else {
+        setIsAdmin(false);
+      }
+    } catch (error) {
+      console.error("Error fetching user role:", error);
+      setIsAdmin(false);
+    }
+  };
+
+  /**
+   * Logs out the user from Firebase, resets local states,
+   * and navigates back to home page (Auth).
+   */
+  const handleLogout = async () => {
+    try {
+      await logoutUser(); // Calls signOut internally
+      setUser(null);
+      setIsAdmin(false);
+      navigate("/");
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  };
+
+  return (
+    <div className="App">
+      {/* NAVIGATION BAR */}
+      <nav className="navbar">
+        <img src={logo} className="logo" alt="logo" />
+        <ul className="nav-links">
+          {/* Always show "Home" */}
+          <li>
+            <NavLink to="/" className={({ isActive }) => (isActive ? "active-link" : "")}>
+              Home
+            </NavLink>
+          </li>
+
+          {/* Show "Booking" only if logged in */}
+          {user && (
+            <li>
+              <NavLink
+                to="/booking"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Booking
+              </NavLink>
+            </li>
+          )}
+
+          {/* Show "Admin" only if user is admin */}
+          {isAdmin && (
+            <li>
+              <NavLink
+                to="/admin"
+                className={({ isActive }) => (isActive ? "active-link" : "")}
+              >
+                Admin
+              </NavLink>
+            </li>
+          )}
+        </ul>
+
+        {/* Show "Logout" button if user is logged in */}
+        {user && (
+          <button className="logout-button" onClick={handleLogout}>
+            Logout
+          </button>
+        )}
+      </nav>
+
+      {/* MAIN CONTENT */}
+      <div className="content">
+        <h1>Welcome to Relationary</h1>
+        <p>Your mental health matters. Book an appointment with ease.</p>
+      </div>
+
+      {/* ROUTES */}
+      <Routes>
+        {/* Home Page -> Auth Component */}
+        <Route path="/" element={<Auth />} />
+
+        {/* Booking only if user is logged in */}
+        {user && <Route path="/booking" element={<Booking />} />}
+
+        {/* Admin only if user is an admin */}
+        {isAdmin && <Route path="/admin" element={<Admin />} />}
+      </Routes>
+    </div>
+  );
+}
+
+export default App;
